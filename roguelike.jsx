@@ -29,7 +29,21 @@ if (Meteor.isClient) {
     }
   });
 
+  var KEYS_TO_XY_CHANGE = {
+    37: {'position.x':-1, 'position.y': 0}, // left
+    39: {'position.x': 1, 'position.y': 0}, // right
+    38: {'position.x': 0, 'position.y': -1}, // up
+    40: {'position.x': 0, 'position.y': 1}, // down
+  };
 
+  var onKeyDown = function(e) {
+    change = KEYS_TO_XY_CHANGE[e.keyCode] || {};
+    BoardObject.update({_id: BoardObject.findOne()._id},
+      {$inc: change}
+    );
+  };
+
+  document.addEventListener('keydown', onKeyDown);
 
   Meteor.startup(function () {
     React.render(<App />, document.getElementById('root'));
