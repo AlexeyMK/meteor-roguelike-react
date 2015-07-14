@@ -1,8 +1,8 @@
 var BoardObject = new Meteor.Collection("BoardObject");
+var BOARDSIZE = {x: 40, y: 15};
 
 if (Meteor.isClient) {
   window.BoardObject = BoardObject;
-  var BOARDSIZE = {x: 60, y: 15};
 
 
   var Cell = React.createClass({
@@ -14,7 +14,17 @@ if (Meteor.isClient) {
     },
     render: function () {
       var player = this.data.player;
-      return <td>{player ? player.display : '_'}</td>;
+      var display;
+
+      if (!player) {
+        display = '_';
+      } else if (player.display_photourl) {
+        display = <img className="fb_profilephoto" src={player.display_photourl} />;
+      } else {
+        display = player.display;
+      }
+
+      return <td><span>{display}</span></td>;
     }
   });
 
@@ -22,8 +32,8 @@ if (Meteor.isClient) {
   var App = React.createClass({
     render: function() {
       return <table>{_.range(BOARDSIZE.y).map(function(y) {
-        return <tr>{_.range(BOARDSIZE.x).map(function(x) {
-          return <Cell position={{x: x, y: y}} />
+        return <tr key={"row_"+y}>{_.range(BOARDSIZE.x).map(function(x) {
+          return <Cell key={"cell_"+x+"_"+y} position={{x: x, y: y}} />
         })}</tr>;
       })}</table>;
     }
@@ -37,10 +47,13 @@ if (Meteor.isClient) {
   };
 
   var onKeyDown = function(e) {
-    change = KEYS_TO_XY_CHANGE[e.keyCode] || {};
-    BoardObject.update({_id: BoardObject.findOne()._id},
-      {$inc: change}
-    );
+    change = KEYS_TO_XY_CHANGE[e.keyCode];
+    var user = Meteor.user();
+    if (change && user) {
+      BoardObject.update({_id: user.profile.board_object},
+        {$inc: change}
+      );
+    }
   };
 
   document.addEventListener('keydown', onKeyDown);
@@ -51,14 +64,38 @@ if (Meteor.isClient) {
 }
 
 if (Meteor.isServer) {
+  var random_empty_position = function() {
+    var guess = {
+      x: Math.floor(Math.random() * BOARDSIZE.x),
+      y: Math.floor(Math.random() * BOARDSIZE.y)
+    };
+
+    if (!BoardObject.findOne({position: guess})) {
+      return guess;
+    } else {
+      return random_empty_position();  // try again
+    }
+  }
+
+  Accounts.onCreateUser(function(options, user) {
+    var entity_id = BoardObject.insert({
+      position: random_empty_position(),
+      display_photourl:
+        "http://graph.facebook.com/" + user.services.facebook.id + "/picture",
+    });
+
+    user.profile = options.profile;
+    user.profile.board_object = entity_id;
+    return user;
+  });
+
   Meteor.startup(function () {
-    if (!BoardObject.findOne({})) {
-      var entity_id = BoardObject.insert({
-          position: {x: 2, y:2},
-          display: 'A',
-          display_color: "rgb(0,0,255)",
-          name: 'Alexey',
-          score: 0
+    // This only works on localhost
+    if (!Accounts.loginServiceConfiguration.findOne({service: "facebook"})) {
+      Accounts.loginServiceConfiguration.insert({
+        service: "facebook",
+        appId: "162346983924869",
+        secret: "a844ee020723050bafed7926e7322765"
       });
     }
   });
