@@ -1,15 +1,12 @@
-var BoardObject = new Meteor.Collection("BoardObject");
-var BOARDSIZE = {x: 40, y: 15};
-
 if (Meteor.isClient) {
-  window.BoardObject = BoardObject;
+  window.Piece = Piece;
 
 
   var Cell = React.createClass({
     mixins: [ReactMeteorData],
     getMeteorData: function() {
       return {
-        player: BoardObject.findOne({position: this.props.position})
+        player: Piece.findOne({position: this.props.position})
       }
     },
     render: function () {
@@ -50,7 +47,7 @@ if (Meteor.isClient) {
     change = KEYS_TO_XY_CHANGE[e.keyCode];
     var user = Meteor.user();
     if (change && user) {
-      BoardObject.update({_id: user.profile.board_object},
+      Piece.update({_id: user.profile.board_object},
         {$inc: change}
       );
     }
@@ -70,7 +67,7 @@ if (Meteor.isServer) {
       y: Math.floor(Math.random() * BOARDSIZE.y)
     };
 
-    if (!BoardObject.findOne({position: guess})) {
+    if (!Piece.findOne({position: guess})) {
       return guess;
     } else {
       return random_empty_position();  // try again
@@ -78,7 +75,7 @@ if (Meteor.isServer) {
   }
 
   Accounts.onCreateUser(function(options, user) {
-    var entity_id = BoardObject.insert({
+    var entity_id = Piece.insert({
       position: random_empty_position(),
       ownerId: user._id,
       display_photourl:
