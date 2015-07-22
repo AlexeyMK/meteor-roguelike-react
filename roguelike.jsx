@@ -1,6 +1,8 @@
+Piece = new Meteor.Collection("Piece");
+BOARDSIZE = {x: 40, y: 15};
+
 if (Meteor.isClient) {
   window.Piece = Piece;
-
 
   var Cell = React.createClass({
     mixins: [ReactMeteorData],
@@ -29,8 +31,8 @@ if (Meteor.isClient) {
   var App = React.createClass({
     render: function() {
       return <table>{_.range(BOARDSIZE.y).map(function(y) {
-        return <tr key={"row_"+y}>{_.range(BOARDSIZE.x).map(function(x) {
-          return <Cell key={"cell_"+x+"_"+y} position={{x: x, y: y}} />
+        return <tr>{_.range(BOARDSIZE.x).map(function(x) {
+          return <Cell position={{x: x, y: y}} />
         })}</tr>;
       })}</table>;
     }
@@ -43,25 +45,22 @@ if (Meteor.isClient) {
     40: {'position.x': 0, 'position.y': 1}, // down
   };
 
-  var onKeyDown = function(e) {
-    change = KEYS_TO_XY_CHANGE[e.keyCode];
-    var user = Meteor.user();
-    if (change && user) {
-      Piece.update({_id: user.profile.board_object},
-        {$inc: change}
-      );
-    }
-  };
-
-  document.addEventListener('keydown', onKeyDown);
-
   Meteor.startup(function () {
+    document.addEventListener('keydown', function(e) {
+      change = KEYS_TO_XY_CHANGE[e.keyCode];
+      var user = Meteor.user();
+      if (change && user) {
+        Piece.update({_id: user.profile.board_object},
+                     {$inc: change});
+      }
+    });
+
     React.render(<App />, document.getElementById('root'));
   });
 }
 
 if (Meteor.isServer) {
-  var random_empty_position = function() {
+  var randomEmptyPosition = function() {
     var guess = {
       x: Math.floor(Math.random() * BOARDSIZE.x),
       y: Math.floor(Math.random() * BOARDSIZE.y)
@@ -70,13 +69,13 @@ if (Meteor.isServer) {
     if (!Piece.findOne({position: guess})) {
       return guess;
     } else {
-      return random_empty_position();  // try again
+      return randomEmptyPosition();  // try again
     }
   }
 
   Accounts.onCreateUser(function(options, user) {
     var entity_id = Piece.insert({
-      position: random_empty_position(),
+      position: randomEmptyPosition(),
       ownerId: user._id,
       display_photourl:
         "http://graph.facebook.com/" + user.services.facebook.id + "/picture",
@@ -85,16 +84,5 @@ if (Meteor.isServer) {
     user.profile = options.profile;
     user.profile.board_object = entity_id;
     return user;
-  });
-
-  Meteor.startup(function () {
-    // This only works on localhost
-    if (!Accounts.loginServiceConfiguration.findOne({service: "facebook"})) {
-      Accounts.loginServiceConfiguration.insert({
-        service: "facebook",
-        appId: "162346983924869",
-        secret: "a844ee020723050bafed7926e7322765"
-      });
-    }
   });
 }
