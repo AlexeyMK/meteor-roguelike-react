@@ -80,6 +80,7 @@ if (Meteor.isServer) {
   Accounts.onCreateUser(function(options, user) {
     var entity_id = BoardObject.insert({
       position: random_empty_position(),
+      ownerId: user._id,
       display_photourl:
         "http://graph.facebook.com/" + user.services.facebook.id + "/picture",
     });
